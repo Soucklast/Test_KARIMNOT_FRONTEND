@@ -16,10 +16,15 @@ export class Dashboard implements OnInit {
 
   // Datos
   users: Usuario[] = [];
+  roles: string[] = ['Admin', 'User'];
+  statuses: string[] = ['Active', 'Inactive'];
+  currentUserId: number | null = null;
 
   // Búsqueda
   searchTerm = '';
   private searchTimeout: any;
+  selectedRoleFilter = '';
+  selectedStatusFilter = '';
 
   // Paginación
   currentPage = 1;
@@ -40,6 +45,8 @@ export class Dashboard implements OnInit {
   constructor(private api: UsoDeAPI) {}
 
   ngOnInit(): void {
+    this.currentUserId = this.api.getUsuarioLocal()?.id ?? null;
+    this.cargarOpcionesFormulario();
     this.cargarUsuarios();
   }
 
@@ -47,7 +54,15 @@ export class Dashboard implements OnInit {
 
   cargarUsuarios(): void {
     this.isLoading = true;
-    this.api.getUsuarios(this.currentPage, this.perPage, this.searchTerm).subscribe({
+    this.api
+      .getUsuarios(
+        this.currentPage,
+        this.perPage,
+        this.searchTerm,
+        this.selectedRoleFilter,
+        this.selectedStatusFilter
+      )
+      .subscribe({
       next: (response) => {
         this.users = response.data;
         this.totalUsers = response.pagination.total;
@@ -62,6 +77,23 @@ export class Dashboard implements OnInit {
     });
   }
 
+  cargarOpcionesFormulario(): void {
+    this.api.getUserFormOptions().subscribe({
+      next: (response) => {
+        const options = response.data;
+        if (options?.roles?.length) {
+          this.roles = options.roles;
+        }
+        if (options?.statuses?.length) {
+          this.statuses = options.statuses;
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener opciones del formulario:', error);
+      },
+    });
+  }
+
   onSearchChange(): void {
     // Debounce para no disparar una petición por cada tecla
     clearTimeout(this.searchTimeout);
@@ -69,6 +101,11 @@ export class Dashboard implements OnInit {
       this.currentPage = 1;
       this.cargarUsuarios();
     }, 400);
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 1;
+    this.cargarUsuarios();
   }
 
   irAPagina(pagina: number): void {
@@ -159,6 +196,11 @@ export class Dashboard implements OnInit {
   // ===== ELIMINAR =====
 
   confirmarEliminar(user: Usuario): void {
+    if (this.isCurrentUser(user)) {
+      this.errorMessage = 'No puedes eliminar tu propio usuario';
+      return;
+    }
+
     this.userToDelete = user;
     this.showDeleteConfirm = true;
   }
@@ -170,6 +212,12 @@ export class Dashboard implements OnInit {
 
   eliminarUsuario(): void {
     if (!this.userToDelete?.id) return;
+
+    if (this.isCurrentUser(this.userToDelete)) {
+      this.cancelarEliminar();
+      this.errorMessage = 'No puedes eliminar tu propio usuario';
+      return;
+    }
 
     this.api.eliminarUsuario(this.userToDelete.id).subscribe({
       next: () => {
@@ -200,5 +248,9 @@ export class Dashboard implements OnInit {
 
   logout(): void {
     this.api.logout();
+  }
+
+  isCurrentUser(user: Usuario): boolean {
+    return !!user.id && user.id === this.currentUserId;
   }
 }

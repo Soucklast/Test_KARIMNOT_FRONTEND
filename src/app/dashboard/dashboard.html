@@ -36,6 +36,25 @@
           />
         </div>
 
+        <div class="form-row filter-row">
+          <div class="form-group">
+            <label>Filtrar por rol</label>
+            <select [(ngModel)]="selectedRoleFilter" name="roleFilter" (ngModelChange)="onFilterChange()">
+              <option value="">Todos</option>
+              <option value="Admin">Admin</option>
+              <option value="User">Normal</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Filtrar por estado</label>
+            <select [(ngModel)]="selectedStatusFilter" name="statusFilter" (ngModelChange)="onFilterChange()">
+              <option value="">Todos</option>
+              <option value="Active">Activo</option>
+              <option value="Inactive">Inactivo</option>
+            </select>
+          </div>
+        </div>
+
         <div *ngIf="isLoading" class="loading-msg">Cargando...</div>
 
         <div class="table-responsive" *ngIf="!isLoading">
@@ -74,7 +93,12 @@
                         <path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                       </svg>
                     </button>
-                    <button class="btn-icon" title="Eliminar" (click)="confirmarEliminar(user)">
+                    <button
+                      *ngIf="!isCurrentUser(user)"
+                      class="btn-icon"
+                      title="Eliminar"
+                      (click)="confirmarEliminar(user)"
+                    >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-9l-1 1H5v2h14V4z"/>
                       </svg>
@@ -152,15 +176,13 @@
         <div class="form-group">
           <label>Rol</label>
           <select [(ngModel)]="formData.role" name="role" required>
-            <option value="Admin">Admin</option>
-            <option value="User">User</option>
+            <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
           </select>
         </div>
         <div class="form-group">
           <label>Estado</label>
           <select [(ngModel)]="formData.status" name="status" required>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
           </select>
         </div>
       </div>

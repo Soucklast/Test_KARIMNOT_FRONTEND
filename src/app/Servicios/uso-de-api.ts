@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
@@ -34,6 +34,11 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface UserFormOptions {
+  roles: string[];
+  statuses: string[];
+}
+
 export interface ApiResponse<T> {
   message?: string;
   data?: T;
@@ -66,6 +71,20 @@ export class UsoDeAPI {
   private apiUrl = 'http://127.0.0.1:8000/api';
 
   constructor(private http: HttpClient, private router: Router) {}
+
+  private getAuthOptions() {
+    const token = this.getToken();
+
+    if (!token) {
+      return {};
+    }
+
+    return {
+      headers: new HttpHeaders({
+        Authorization: `Bearer ${token}`,
+      }),
+    };
+  }
 
   // ===== AUTENTICACION =====
   login(email: string, password: string): Observable<LoginResponse> {
@@ -108,7 +127,9 @@ export class UsoDeAPI {
   getUsuarios(
     page: number = 1,
     limit: number = 10,
-    search: string = ''
+    search: string = '',
+    role: string = '',
+    status: string = ''
   ): Observable<PaginatedResponse<Usuario>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -118,37 +139,53 @@ export class UsoDeAPI {
       params = params.set('search', search);
     }
 
+    if (role) {
+      params = params.set('role', role);
+    }
+
+    if (status) {
+      params = params.set('status', status);
+    }
+
     return this.http.get<PaginatedResponse<Usuario>>(`${this.apiUrl}/users`, {
       params,
+      ...this.getAuthOptions(),
     });
+  }
+
+  /**
+   * GET /api/users/options - Obtiene los valores disponibles para rol y estado
+   */
+  getUserFormOptions(): Observable<ApiResponse<UserFormOptions>> {
+    return this.http.get<ApiResponse<UserFormOptions>>(`${this.apiUrl}/users/options`, this.getAuthOptions());
   }
 
   /**
    * POST /api/users - Crea un nuevo usuario
    */
   crearUsuario(usuario: Usuario): Observable<ApiResponse<Usuario>> {
-    return this.http.post<ApiResponse<Usuario>>(`${this.apiUrl}/users`, usuario);
+    return this.http.post<ApiResponse<Usuario>>(`${this.apiUrl}/users`, usuario, this.getAuthOptions());
   }
 
   /**
    * GET /api/users/{id} - Obtiene un usuario especifico por ID
    */
   obtenerUsuario(id: number): Observable<ApiResponse<Usuario>> {
-    return this.http.get<ApiResponse<Usuario>>(`${this.apiUrl}/users/${id}`);
+    return this.http.get<ApiResponse<Usuario>>(`${this.apiUrl}/users/${id}`, this.getAuthOptions());
   }
 
   /**
    * PUT /api/users/{id} - Actualiza un usuario
    */
   actualizarUsuario(id: number, usuario: Partial<Usuario>): Observable<ApiResponse<Usuario>> {
-    return this.http.put<ApiResponse<Usuario>>(`${this.apiUrl}/users/${id}`, usuario);
+    return this.http.put<ApiResponse<Usuario>>(`${this.apiUrl}/users/${id}`, usuario, this.getAuthOptions());
   }
 
   /**
    * DELETE /api/users/{id} - Elimina un usuario
    */
   eliminarUsuario(id: number): Observable<ApiResponse<any>> {
-    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/users/${id}`);
+    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/users/${id}`, this.getAuthOptions());
   }
 
   /**
@@ -156,7 +193,8 @@ export class UsoDeAPI {
    */
   verificarEmail(email: string): Observable<EmailVerificationResponse> {
     return this.http.get<EmailVerificationResponse>(
-      `${this.apiUrl}/users/verify/${email}`
+      `${this.apiUrl}/users/verify/${email}`,
+      this.getAuthOptions()
     );
   }
 }
